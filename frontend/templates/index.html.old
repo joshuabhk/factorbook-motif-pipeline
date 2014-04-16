@@ -1,0 +1,482 @@
+<html>
+<head>
+<title>Factorbook Motif Pipeline</title>
+
+<style type='text/css'>
+ .header {text-align:center; font-size:2em; font-weight:bolder; font-family:verdana,arial,sans-serif}
+ .strong {color:blue; font-weight:bold; font-size:1.2em}
+ .red {color:red;}
+ fieldset {border-style:solid; border-width:medium; border-color:gray; padding:0.5cm}
+ body {font-family:verdana, arial, sans-serif; font-size:0.8em}
+ .divisions {border: 1px solid ; padding: 5px 5px 5px 5px; background: #EFEFEF; margin: 20px 0 8px 0px;}
+ .divisionTitle {position: relative; top: -12px; border: 1px solid; background: #e6f2ff; width: 120px; margin: 0 0 0 0; font-weight: normal; font-size: 0.8em; padding: 0 0 0 2px; text-align: center;}
+
+input[type="text"] {
+	padding: 0px 0px 0px 0px;
+	height:1.4em;
+	vertical-align:middle;
+	margin-bottom:0.2em;
+	margin-top:0.2;
+}
+
+.btn {
+        background:#050;
+        color:white;
+        font-family:'trebuchet ms',verdana,sans-serif;
+	font-size:1.2em ;
+        font-weight:bold;
+        margin-left: 30px;
+        margin-right: 10px;
+}
+
+.btc {
+        background:#8B0000;
+	color:white ;
+	font-size:1.2em ;
+        font-family:'trebuchet ms',verdana,sans-serif;
+        font-weight:bold;
+}
+
+
+table.reference{ 
+	border-collapse:collapse;
+	width:100%; }
+table.reference tr:nth-child(odd)	{background-color:#F6F4F0;}
+table.reference tr:nth-child(even)	{background-color:#ffffff;}
+table.reference tr.fixzebra		{background-color:#F6F4F0;}
+table.reference th{ 
+	color:#ffffff;
+	background-color:#555555;
+	border:1px solid #555555;
+	padding:3px;
+	vertical-align:top;
+	text-align:left; } 
+table.reference th a:link,table.reference th a:visited{ color:#ffffff; } 
+table.reference th a:hover,table.reference th a:active{ color:#EE872A; }
+table.reference td{ 
+	border:1px solid #d4d4d4;
+	padding:5px;
+	padding-top:2px;
+	padding-bottom:2px;
+	vertical-align:top; }
+table.reference td.example_code { vertical-align:bottom; }
+
+</style>
+
+<SCRIPT type="text/javascript">
+
+/* 1.1.2: Fixed a bug where trailing . in e-mail address was passing
+           (the bug is actually in the weak regexp engine of the browser; I
+           simplified the regexps to make it work).
+  1.1.1: Removed restriction that countries must be preceded by a domain,
+           so abc@host.uk is now legal.  However, there's still the
+           restriction that an address must end in a two or three letter
+           word.
+    1.1: Rewrote most of the function to conform more closely to RFC 822.
+    1.0: Original  */
+
+
+function emailCheck (emailStr) {
+
+	if ( (emailStr == null) || (emailStr=="") ){
+	       alert("Email address is required to submit a job.") ;
+	       return false ;
+	}
+	/* The following pattern is used to check if the entered e-mail address
+	  fits the user@domain format.  It also is used to separate the username
+	  from the domain. */
+	var emailPat=/^(.+)@(.+)$/ ;
+	/* The following string represents the pattern for matching all special
+	  characters.  We don't want to allow special characters in the address.
+	  These characters include ( ) < > @ , ; : \ " . [ ]    */
+	var specialChars="\\(\\)<>@,;:\\\\\\\"\\.\\[\\]" ;
+	/* The following string represents the range of characters allowed in a
+	  username or domainname.  It really states which chars aren't allowed. */
+	var validChars="\[^\\s" + specialChars + "\]" ;
+	/* The following pattern applies if the "user" is a quoted string (in
+	  which case, there are no rules about which characters are allowed
+	  and which aren't; anything goes).  E.g. "jiminy cricket"@disney.com
+	  is a legal e-mail address. */
+	var quotedUser="(\"[^\"]*\")" ;
+	/* The following pattern applies for domains that are IP addresses,
+	  rather than symbolic names.  E.g. joe@[123.124.233.4] is a legal
+	  e-mail address. NOTE: The square brackets are required. */
+	var ipDomainPat=/^\[(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\]$/ ;
+	/* The following string represents an atom (basically a series of
+	  non-special characters.) */
+	var atom=validChars + '+' ;
+	/* The following string represents one word in the typical username.
+	  For example, in john.doe@somewhere.com, john and doe are words.
+	  Basically, a word is either an atom or quoted string. */
+	var word="(" + atom + "|" + quotedUser + ")" ;
+	/* The following pattern describes the structure of a normal symbolic
+	  domain, as opposed to ipDomainPat, shown above. */
+	var domainPat=new RegExp("^" + atom + "(\\." + atom +")*$") ;
+
+
+	/* Finally, let's start trying to figure out if the supplied address is
+	  valid. */
+
+	/* Begin with the coarse pattern to simply break up user@domain into
+	  different pieces that are easy to analyze. */
+	var matchArray=emailStr.match(emailPat) ;
+	if (matchArray==null) {
+	 /* Too many/few @'s or something; basically, this address doesn't
+	    even fit the general mould of a valid e-mail address. */
+	       alert("Email address seems incorrect (check @ and .'s)") ;
+	       return false ;
+	}
+	var user=matchArray[1] ;
+	var domain=matchArray[2] ;
+
+	// See if "user" is valid
+	if (user.match(userPat)==null) {
+	   // user is not valid
+	   alert("The username doesn't seem to be valid.") ;
+	   return false ;
+	}
+
+	/* if the e-mail address is at an IP address (as opposed to a symbolic
+	  host name) make sure the IP address is valid. */
+	var IPArray=domain.match(ipDomainPat) ;
+	if (IPArray!=null) {
+	   // this is an IP address
+		 for (var i=1;i<=4;i++) {
+		   if (IPArray[i]>255) {
+		       alert("Destination IP address is invalid!") ;
+		       return false ;
+		   }
+	   }
+	   return true ;
+	}
+
+	// Domain is symbolic name
+	var domainArray=domain.match(domainPat) ;
+	if (domainArray==null) {
+	       alert("The domain name doesn't seem to be valid.") ;
+	   return false ;
+	}
+
+	/* domain name seems valid, but now make sure that it ends in a
+	  three-letter word (like com, edu, gov) or a two-letter word,
+	  representing country (uk, nl), and that there's a hostname preceding
+	  the domain or country. */
+
+	/* Now we need to break up the domain to get a count of how many atoms
+	  it consists of. */
+	var atomPat=new RegExp(atom,"g") ;
+	var domArr=domain.match(atomPat) ;
+	var len=domArr.length ;
+	if (domArr[domArr.length-1].length<2 || domArr[domArr.length-1].length>3) { 
+	  // the address must end in a two letter or three letter word.
+	  alert("The address must end in a three-letter domain, or two letter country.") ;
+	  return false ;
+	}
+
+	// Make sure there's a host name preceding the domain.
+	if (len<2) {
+	  var errStr="This address is missing a hostname!" ;
+	  alert(errStr) ;
+	  return false ;
+	}
+
+	// If we've gotten this far, everything's valid!
+	return true;
+}
+
+function get_column_number( str ) {
+    return str.split( "\t" ).length ;
+}
+
+function all_same_columns( lines ) {
+    var n = lines[0].split("\t").length ; 
+    for ( var i=1 ; i < lines.length ; i++ ) {
+	if ( n != lines[i].split("\t").length ) {
+            return false ;
+        }
+    }
+    return true ;
+}
+
+function split_lines( str ) {
+    return str.split(/\r\n|[\n\v\f\r\x85\u2028\u2029]/) ;
+}
+
+
+function get_table_preview( lines ) {
+    //number of columns
+    var n = get_column_number( lines[0] ) ;
+
+    var table = "<tr>" ;
+
+    //build header
+    for ( var i=1 ; i <= n ; i++ ) {
+        table += "<th id=col"+i+">Column " + i + "</th>" ;
+    }
+    table += "</tr>" ;
+    
+    //body
+    for ( var i = 0 ; i < lines.length ; i++ ) {
+        var row = "<tr>" ;
+        var columns = lines[i].split( "\t" ) ;
+        for ( var j = 0 ; j < columns.length ; j++ ) {
+            row += "<td>" + columns[j] + "</td>" ;
+        }
+        table += row + "</tr>" ; 
+        if (i >= 10 ) { 
+            break ; 
+        }
+    }
+
+    return "<table class=reference>" + table + "</table>" ;
+}
+
+
+function get_select_options( ncols ) {
+    var text = '<option></option>' ;
+    for ( var i=1 ; i <= ncols ; i++ ) {
+        text += '<option>col'+ i +'</option>' ;
+    }
+    return text ;
+}
+
+
+function reset_column_headers( ncols ) {
+    for ( var i=1 ; i <= ncols ; i++ ) {
+        var hname = 'col' + i ;
+        document.getElementById(hname).innerHTML='Column '+ i
+    }
+    document.getElementById('customSelectDiv').innerHTML=''
+}
+
+
+function set_header( id, text ) {
+    document.getElementById( id ).innerHTML = text ;
+}
+
+function set_narrowpeak(ncols) {
+    //Need to reset column headers before putting info
+    //just in case other functions messed the header before this call
+    reset_column_headers(ncols) ;
+
+    set_header( 'col1', 'Chromosome Name' ) ;
+    set_header( 'col2', 'Peak Start' ) ;
+    set_header( 'col3', 'Peak End' ) ;
+    set_header( 'col10', 'Peak Summit' ) ;
+}
+
+function set_summitcol(el, ncols) {
+    for ( var i = 1 ; i <= ncols ; i++ ) {
+        var ele = document.getElementById('col'+i) ;
+        
+        if ( ele && ele.innerHTML == 'Peak Summit' ) {
+            ele.innerHTML = 'Column ' + i ;
+        }
+    }
+    var summitcol = el.options[ el.selectedIndex ].text
+    if (summitcol) {
+        document.getElementById( summitcol ).innerHTML = 'Peak Summit' ;
+    }
+    else {
+        alert( 'Peak summit column should be selected. If your file does not contain peak summit information select nomalization by peak center.' ) ;
+    }
+}
+
+function get_summit_selector( ncols ) {
+    var text = '<select id="summitcol" name="summitcol" onchange="set_summitcol(this,'+ncols+')">' ;
+    text += '<option></option>' ;
+    for ( var i=4 ; i<=ncols; i++ ) {
+        text += '<option>col'+ i +'</option>' ;
+    }
+    return text + '<select>' ;
+}
+
+function set_bed( ncols ) {
+    reset_column_headers(ncols) ;
+    set_header( 'col1', 'Chromosome Name' ) ;
+    set_header( 'col2', 'Peak Start' ) ;
+    set_header( 'col3', 'Peak End' ) ;
+
+    var normsummit = document.getElementById('normsummit') ;
+    if (normsummit.checked) {
+       	document.getElementById('customSelectDiv').innerHTML = get_summit_selector(ncols) ;
+    }
+}
+
+function set_normtype( ncols ) {
+    var narrowpeak = document.getElementById( 'narrowpeak' ).checked ;
+    var bed = document.getElementById( 'bedpeak' ).checked ;
+    if ( narrowpeak ) {
+        set_narrowpeak(ncols) ;
+        return true ;
+    }
+    if (bedpeak) {
+        set_bed(ncols) ;
+        return true ;
+    }
+}
+
+
+function get_file_type_selector( ncols ) {
+    var text = '<div class=divisions><div class=divisionTitle>Select normalization</div><input type=radio name=normalizetype id=normsummit onclick="set_normtype('+ncols+')">By Peak Summits</input><br>'
+        text += '<input type=radio name=normalizetype id=normcenter onclick="set_normtype('+ncols+')" >By Peak Centers</input></div>'
+
+        text += '<div class=divisions><div class=divisionTitle>Select file format</div><input type=radio name=filetype id=narrowpeak onclick="set_narrowpeak('+ncols+')">NarrowPeak format</input><br>' ;
+        text +='<input type=radio name=filetype id=bedpeak onclick="set_bed('+ncols+')">BED format</input><br>' ;
+
+        text += '<div id=customSelectDiv></div>'
+
+	/*
+        text += '<br>' ;
+        text += '<select id="chrcol" name="chrcol" onchange="select_file_type(this)">' ;
+        text += get_select_options(ncols) ;
+        text += '</select>' ;
+        text += '<select id="startcol" name="startcol" onchange="select_file_type(this)">' ;
+        text += get_select_options(ncols) ;
+        text += '</select>' ;
+        text += '<select id="endcol" name="endcol" onchange="select_file_type(this)">' ;
+        text += get_select_options(ncols) ;
+        text += '</select>' ;
+        text += '<select id="summitcol" name="summitcol" onchange="select_file_type(this)">' ;
+        text += get_select_options(ncols) ;
+        text += '</select>' ;
+	*/
+
+    return text ;
+}
+
+function handleFileSelect(el) {
+    var files = el.files; // FileList object saved in input file tag.
+
+    // files is a FileList of File objects. List some properties.
+    var output = [] ;
+    var f = files[0] ;
+    output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
+                f.size, ' bytes, last modified: ',
+                f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
+                '</li>') ;
+    //document.getElementById('fileopt').innerHTML = '<ul>' + output.join('') + '</ul>';
+
+    //read the first 10kb file for preview
+    var start = 0;
+    var stop = 1024*10;
+    if ( stop > f.size ) {
+        stop = f.size - 1 ;
+    }
+
+    var reader = new FileReader();
+    reader.onloadend = function(e) {
+      if (e.target.readyState == FileReader.DONE) { // DONE == 2
+
+	//////
+        //raw output preview
+        //document.getElementById("filepreview").innerHTML = e.target.result;
+	//////
+
+	//////
+	//output preview as a table
+	var lines = split_lines(e.target.result) ;
+        lines.pop() ; //remove the last line for safety...
+
+	if ( !all_same_columns(lines) ) {
+            alert("Rows have different number of columns! Are you sure the file is in BED or NarrowPeak formats?") ;
+	    return false ;
+        }
+	var ncols = get_column_number( lines[0] ) ;
+        if ( ncols < 3 ) {
+            alert( "At least three columns (Chromosome Name, Peak Start and Peak End) are required to discover motifs." ) ;
+            return false;
+        }
+
+	if ( lines.length > 1 ) {
+            document.getElementById("filepreview").innerHTML = get_file_type_selector( ncols ) ;
+            document.getElementById("filepreview").innerHTML += get_table_preview( lines ) ;
+	}
+	else {
+            alert( "Too few lines detected! Are you sure the file is in BED or NarrowPeak formats?" ) ;
+            return false ;
+        }
+
+        if (ncols == 10 ) {
+            document.getElementById( "normsummit" ).checked = true ;
+            document.getElementById( "narrowpeak" ).checked = true ;
+            set_narrowpeak( ncols ) ;
+        }
+        else if (ncols == 3) {
+            document.getElementById( "normsummit" ).disabled = true ;
+            document.getElementById( "normcenter" ).checked = true ;
+            document.getElementById( "bedpeak" ).checked = true ;
+            set_bed( ncols ) ;
+        }
+	else { 
+            document.getElementById( "normsummit" ).checked = true ;
+            document.getElementById( "bedpeak" ).checked = true ;
+            set_bed( ncols ) ;
+	}
+
+        //code snippet from the html5 blog example
+        //document.getElementById('byte_range').textContent = 
+        //    ['Read bytes: ', start + 1, ' - ', stop + 1,
+        //     ' of ', file.size, ' byte file'].join('');
+      }
+    };
+
+    var blob = f.slice( start, stop + 1) ;
+    reader.readAsBinaryString(blob) ;
+  }
+
+ 
+</script>
+</head>
+
+<body>
+<table width=100% border=0><tr><td class='header'>Factorbook Motif Pipeline</td></tr></table>
+<hr noshade size=5 color=Gold>
+
+Factorbook motif pipeline discovers <b><i>de novo</i> motifs </b> for a set of detected peaks from a ChIP-Seq experiment.<br>
+Our server provides further filtering for de novo discovered motifs by measuring GC content bias and local sequence bias provided by the flanking regions.
+<p>Click for the <a href=doc/flowchart.pdf target='_blank'><b>flowchart</b></a> of Factorbook motif pipeline.<br>
+
+Click for <a href="doc/fmp_tutorial.html"><b>tutorial and explanation</b></a> of the server results.
+<!-- <p>Click <a href=http://prodata.swmed.edu/HorA/>here</a> for some pre-run results.</p> -->
+<hr noshade size=5 color=Gold>
+
+<!--<p style="color:red; font-size:large; font-style:oblique;font-weight:bold; text-decoration:blink"> We are upgrading the server. If you see any abnormal results, retry after few minitues. </p>-->
+
+<form name="upload_form" onSubmit="return emailCheck(this.email.value);" action='upload' method='post' enctype='multipart/form-data'>
+<center><input class='btn' name=example_search type=button onclick="window.location.href='view/{{ exampleid }}'" value="Output example" /></center>
+<fieldset width=100%>
+<legend class=strong>Peak Data Input</legend>
+<b>Input a query ChIP-seq peak dataset in <a href=http://genome.ucsc.edu/FAQ/FAQformat.html#format1 target='_blank'>BED format</a> or <a href=http://genome.ucsc.edu/FAQ/FAQformat.html#format12 target="_blank">ENCODE NarrowPeak format</a> to find motifs.</b> <br>Note that the peak file should be ordered by peak strength, e.g. sorted in a order for peaks with stronger signals before peaks with weaker signals. Ideally, our method works better with more than 1000 peaks detected from ChIP-Seq experiments, although it is not an absolute requirement.<br><br>
+
+<b>Upload a peak file:</b> <input type=file name='myFile' size=30 id=fileinput onchange='handleFileSelect(this)'>
+<output id=filepreview></output>
+<output id=fileopt ></output>
+
+</fieldset>
+
+<fieldset>
+<legend class=strong>Genome database</legend>
+
+<select name=db> 
+	<option selected value=hg19> Human (HG19) </option>
+	<option value=mm9> Mouse (MM9) </option>
+</select>
+<br>
+
+</fieldset>
+
+<fieldset> <legend class=string>Submission </legend>
+<b>Email (required):</b> <input type='text' name='email' size=30><br>
+<b>TF Name</b> (optional): <input type='text' name='jobname' size=30>
+<input type='submit' value='Submit' class=btn> <input class=btc type='reset'>
+</fieldset></form>
+<br>
+<hr noshade size=5 color=Gold>
+<p><b>References:</b></p>
+<p>Kim BH, Weng Z. Factorbook motif pipeline <i>(manuscript in preparation)</i> 2014</p>
+<p>Wang J, Zhuang J, Iyer S, Lin XY, Greven MC, Kim BH, Moore J, Pierce BG, Dong X, Virgil D, Birney E, Hung JH, Weng Z. Factorbook.org: a Wiki-based database for transcription factor-binding data generated by the ENCODE consortium. <i>Nucleic Acids Res.</i> 2013 Jan;41(Database issue):D171-6</p>
+<p><i>Comments and suggestions to: <a href='mailto:bonghyun.kim@umassmed.edu'>bonghyun.kim@umassmed.edu</a></i></p>
+<p><i>Last updated on 2014-3-28</i></p>
+</body>
+</html>

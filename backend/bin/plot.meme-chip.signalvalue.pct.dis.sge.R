@@ -1,0 +1,164 @@
+library(grImport)
+
+args<-commandArgs(TRUE)
+selected_id<-args[1]
+
+cat('starting...\n')
+master<-read.table("master.table.final.test",sep="\t",head=T)
+cat('master file read\n')
+#old_table <- read.table( '/home/kimb/projects/encode_gr/jie.table', sep='\t', head=T )
+#filter<-read.table("meme-chip.signalvalue.pct.dis.summary.pct10.fold1.25.p1e5",sep="\t",head=T)
+#master.2<-master[master$spp_filename %in% filter$filename,]
+rc<-read.table("logo_rc.summary",sep="\t",row.names=1)
+cat("logo file read\n")
+
+score_data1 <-read.table("meme-chip.signalvalue.pct.dis.combined.summary",sep="\t",col.names=c("filename","motif_id","motif_name","peak","fimo","fimo.l","fimo.r"))
+cat("meme-chip file read\n")
+score_data2 <-read.table("fimo.top500-1000.pct.summary.100samples.xTFBS.clean",sep="\t",col.names=c("filename","motif_id","fimo.top501",seq(1,100,1)))
+cat("fimo file read\n")
+score_data <- merge( score_data1, score_data2, by.x=1:2, by.y=1:2, sort=F )
+
+score_data$p <- p.adjust(apply(score_data[-c(1:7)],1,function(x) pnorm(x[1],mean=mean(x[-1]),sd=sd(x[-1]),lower.tail=F)),method="bonferroni")
+score_data$l <- score_data$fimo*2/(score_data$fimo.l+score_data$fimo.r)
+score_data$f <- score_data$fimo/score_data$peak
+
+for(c in unique(master$major_class))
+{
+	master.class<-master[master$major_class==c,]
+	for(i in master.class[order(master.class$HGNC.ID,master.class$cell,master.class$treatment,master.class$lab),"spp_filename"])
+	{
+		#spp<-gsub(".bam.*","",i)
+		spp <- i
+		
+		if( selected_id != spp ) {
+			next
+		}
+
+		info<-master.class[master.class$spp_filename==i,]
+		#print(i)
+		print(spp)
+
+		spp_name=paste( info$HGNC.ID, info$cell, info$treatment, info$lab, spp, sep='.' )
+
+		pdf(paste( spp_name,".pdf",sep=""),width=10)
+		logo.pos<-matrix(c(0.5,0.9,0.83,0.9,0.17,0.4,0.5,0.4,0.83,0.4),ncol=2,byrow=T)
+		layout(matrix(c(1,2,4,1,3,5,1,3,5,6,8,10,7,9,11,7,9,11),ncol=3,nrow=6,byrow=T))
+
+		fimo<-read.table("top500.center.meme_fimo_out/fimo.txt",sep="\t")
+		fimo<-data.frame(fimo[,1:2],apply(fimo,1,function(x) if(150 %in% seq(as.numeric(x[3]),as.numeric(x[4]))) { 0 } else { min(abs(as.numeric(x[4])-150),abs(as.numeric(x[3])-150)) }))
+
+		fimo.flanking<-read.table("top500.center.meme.flanking.fimo_out/fimo.txt",sep="\t")
+		if(nrow(fimo.flanking)>0)
+		{
+			fimo.flanking<-data.frame(fimo.flanking[,1:2],apply(fimo.flanking,1,function(x) if(150 %in% seq(as.numeric(x[3]),as.numeric(x[4]))) { 0 } else { min(abs(as.numeric(x[4])-150),abs(as.numeric(x[3])-150)) }))
+			fimo.flanking<-data.frame(fimo.flanking,t(apply(fimo.flanking,1,function(x) unlist(strsplit(as.character(x[2]),"-"))))[,2])
+			fimo.flanking[,2]<-t(apply(fimo.flanking,1,function(x) unlist(strsplit(as.character(x[2]),"-"))))[,1]
+		}
+
+		peak<-read.table(paste(spp,"_summits.window150.clip.bed",sep=""),sep="\t")
+		system(paste("grep -w nsites= top500.center.meme_out/meme.txt  | cut -f8 -d \" \" > tmp",sep=""))
+		meme.counts<-read.table("tmp")
+		bin=max(2,ceiling(nrow(peak)/80))
+		write.table( bin, col.names=F, row.names=F, quote=F, sep="\t", paste0(spp, ".binSize") )
+		peak.fimo<-matrix(0,nrow=5,ncol=nrow(peak))
+		peak.fimo.l<-peak.fimo
+		peak.fimo.r<-peak.fimo
+
+		#check if the dataset is in original GR paper
+		#old_flag = '(new)'
+		#if ( spp %in% old_table$spp_filename ) {
+		#	old_flag='(OLD)'
+		#}
+
+		### plot the overview for all the motifs
+		motif_num<-sum(info[,5:9]!="")
+		if(motif_num==0) { next }
+		par(mar=c(5,4,5,4))
+		plot(seq(1,nrow(peak),1),rep(0,nrow(peak)),ylim=c(0,1),main=info$HGNC.ID,xlab="ranked peak",ylab="fraction of peaks w/ motif",col=2,type="n",col.main=2)
+
+		#with old_flag
+		#title(paste(info$Common.Name,"-",info$cell,"-",info$treatment,"-",info$lab, old_flag),cex.main=0.9,line=1)
+		title(paste(info$Common.Name,"-",info$cell,"-",info$treatment,"-",info$lab ),cex.main=0.9,line=1)
+		k<-0
+		for(j in seq(1,5,1))
+		{
+			if(info[,j+4]=="") { next }
+			k<-k+1
+			motif<-as.data.frame(tapply(fimo[fimo[,1]==j,3],fimo[fimo[,1]==j,2],min))
+			peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+			#peak.fimo[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+			peak.fimo[j,]<-peak.fimo.1[order( as.numeric( sub( "peak_", "", peak.fimo.1[,5] )) ),7]
+			lines(seq(bin,nrow(peak),bin),apply(matrix(!is.na(peak.fimo[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin,col=k+1,lwd=2)
+		
+			motif<-as.data.frame(tapply(fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="L",3],fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="L",2],min))
+			peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+			#peak.fimo.l[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+			peak.fimo.l[j,]<-peak.fimo.1[order( as.numeric(sub("peak_","",peak.fimo.1[,5])) ),7]
+
+			motif<-as.data.frame(tapply(fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="R",3],fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="R",2],min))
+			peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+			#peak.fimo.r[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+			peak.fimo.r[j,]<-peak.fimo.1[order( as.numeric(sub("peak_","",peak.fimo.1[,5])) ),7]
+
+			f<-apply(rbind(apply(matrix(!is.na(peak.fimo.l[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin,apply(matrix(!is.na(peak.fimo.r[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin),2,mean)
+			lines(seq(bin,nrow(peak),bin),f,col=k+1,lty=3,lwd=2)
+		}
+		legend("topright",c(paste("M",seq(1,motif_num),sep=""),"flanking"),lty=c(rep(1,motif_num),3),col=c(seq(2,motif_num+1,1),1),bty="n")
+
+		k<-0
+		for(j in seq(1,5,1))
+		{
+			par(mar=c(0,0,2,0))
+			if(info[,j+4]=="") { next }
+			k<-k+1
+			plot.new()
+			
+			title( master[master$spp_filename==spp,paste("MOTIF",j,sep="")] )
+
+			#spp1 <- paste( "spp.idrOptimal.mm9.", spp, sep="" )
+			#PostScriptTrace(paste("/home/kimb/scratch/gr_pipeline_mm/jobs/spp.idrOptimal.mm9.",spp,".bam/top500.center.meme_out/",rc[as.character(spp1),j],sep=""),"test.xml")
+			PostScriptTrace(paste("top500.center.meme_out/",rc[as.character(spp),j],sep=""),"test.xml")
+			system( paste("perl /home/kimb/factorbook_motif_pipeline/bin/fix.yaxis.pl > ", spp, "test.fix.xml", sep=''))
+			logo<-readPicture( paste(spp, "test.fix.xml", sep='') )
+			grid.picture(logo,height=0.15,width=0.2,x=logo.pos[k,1],y=logo.pos[k,2])
+
+			#adding score information
+			sds = subset( score_data, filename == spp & motif_id == j )[1,] #uniquely identified a row!
+			sdss1 = paste( 'T1:', formatC(sds$p,digit=2,format='e') )
+			sdss2 = paste( 'T2:', as.character( round(sds$f,2) ) )
+			sdss3 = paste( 'T2/C2:', as.character( round(sds$l,2) ) )
+			sds_col = 'red'
+			#did not pass the cutoff by Jie
+			if ( sds$f >= 0.1 & sds$l >= 1.25 & sds$p <= 0.00001 ) {
+				sds_col='black'
+			}
+
+			write.table( c(sds$p, sds$f, sds$l), col.names=F, row.names=F, quote=F, sep="\t", paste0(spp,".score.",j))
+
+			par(mar=c(4,4,2,4)+.1)
+			f <- apply(matrix(peak.fimo[j,],ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,function(x) mean(x,na.rm=T))
+			write.table(f, col.names=F, row.names=F, quote=F, sep="\t", paste0(spp,".avgDistanceToSummit.",j))
+			plot(seq(bin,nrow(peak),bin),f,ylim=c(0,150),type="l",lwd=2,main=paste("MEME : ",meme.counts[j,1]," / ",min(500,nrow(peak)),"\n","FIMO : ",sum(!is.na(peak.fimo[j,]))," / ", nrow(peak), "\n", sdss1," ",sdss2," ",sdss3, sep=""),cex.main=0.8,yaxt="n",xlab="",ylab="", col.main=sds_col, col='grey' )
+			axis(4,col="grey",col.axis="grey")
+			if(k==2 || k==motif_num)
+			{
+				mtext("absolute distance to the summits",side=4,line=3,cex=0.6,col="grey")
+			}
+
+			par(new=TRUE)
+			f <- apply(matrix(!is.na(peak.fimo[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin
+			write.table(f, col.names=F, row.names=F, quote=F, sep="\t", paste0(spp,".centerPeakFraction.",j))
+			plot(seq(bin,nrow(peak),bin),f,ylim=c(0,1),xlab="",col=k+1,lwd=2,type="l",ylab="",frame.plot=F)
+			f<-apply(rbind(apply(matrix(!is.na(peak.fimo.l[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin,apply(matrix(!is.na(peak.fimo.r[j,]),ncol=bin,byrow=T)[1:floor(nrow(peak)/bin),],1,sum)/bin),2,mean)
+			write.table(f, col.names=F, row.names=F, quote=F, sep="\t", paste0(spp,".flankingPeakFraction.",j))
+			lines(seq(bin,nrow(peak),bin),f,col=k+1,lty=3,lwd=2)
+			if(k==1 || k==3)
+			{
+				title(ylab="fraction of peaks w/ motif")
+			}
+		}
+		if(k<5) { for(n in 1:(j-k)) { print(n); plot.new(); plot.new() } }
+	}
+	dev.off();
+}
+

@@ -1,0 +1,3 @@
+This package is a set of scripts written in python using cherrypy and jinja2
+for web service (or frontend) of Factorbook Motif Pipeline and scripts written
+for the actual motif searching and filtering computations (or backend)

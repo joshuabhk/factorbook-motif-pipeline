@@ -1,0 +1,219 @@
+<html>
+  <head>
+    <title>{{ servername|title }} Result</title>
+    <!--Load the AJAX API-->
+    <link rel='stylesheet' type='text/css' href='{{hostparent}}/css/output.pl.css'>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script type="text/javascript">
+    // Load the Visualization API and the piechart package.
+    google.load('visualization', '1', {'packages':['corechart', 'table']});
+    google.setOnLoadCallback( function() { getTableData( "{{jobid}}" ); });
+    google.setOnLoadCallback( function() { drawTable( "{{jobid}}" ); });
+    // Set a callback to run when the Google Visualization API is loaded.
+    {%  for motifid in motifids %}
+        google.setOnLoadCallback( function() { drawChart( "{{jobid}}", "{{motifid}}" ); });
+    {% endfor %}
+
+   function hide_motifs() {
+      for ( var i=1; i < TableData.responseJSON.rows.length+1 ; i++ ) {
+        if ( TableData.responseJSON.rows[i-1].c[4].v == false ) {
+		$('#motifarea_'+i).hide()
+	}
+      }
+    }
+   function show_motifs() {
+	for ( var i=1 ; i < TableData.responseJSON.rows.length+1 ; i++ ) {
+		$('#motifarea_'+i).show()
+	}
+   }
+
+    </script>
+      
+    <script type='text/javascript'>
+
+	function xinspect(o,i){
+	    if(typeof i=='undefined')i='';
+	    if(i.length>50)return '[MAX ITERATIONS]';
+	    var r=[];
+	    for(var p in o){
+		var t=typeof o[p];
+		r.push(i+'"'+p+'" ('+t+') => '+(t=='object' ? 'object:'+xinspect(o[p],i+'  ') : o[p]+''));
+	    }
+	    return r.join(i+'\n');
+	}
+
+     var TableData = null ;
+     function getTableData( jobid, motifid ) {
+      var jsonData = $.ajax({
+          url: "{{hostparent}}/motifscore/"+jobid+"/",
+          dataType:"json",
+          async: false
+          });
+      TableData = jsonData ;
+     }
+
+    </script>
+
+    <script type="text/javascript">
+    function drawChart( jobid, motifid ) {
+      var jsonData = $.ajax({
+          url: "{{hostparent}}/motifdata/"+jobid+"/"+motifid,
+          dataType:"json",
+          async: false
+          }).responseText;
+          
+      // Create our data table out of JSON data loaded from server.
+      var data = new google.visualization.DataTable(jsonData);
+
+      // Instantiate and draw our chart, passing in some options.
+      var chart = new google.visualization.LineChart(document.getElementById('chart_div'+motifid));
+      //var line_colors = { '1':'#FF0000', '2':'#00FF00', '3':'#0000FF', '4':'#00FFFF', '5':'#FF00FF' } ;
+      var line_colors = { '1':'#FF0000', '2':'#FF0000', '3':'#FF0000', '4':'#FF0000', '5':'#FF0000' } ;
+      var distance_color = '#C0C0C0';
+      var flanking_color = '#000000';
+
+      chart.draw(data, {
+          width: 400, height: 240,
+          //curveType: "function",
+          focusTarget: 'datum',
+          legend: { maxLines: 3 },
+          vAxes: { 0: {title:"Fraction with motif", titleTextStyle:{color:line_colors[motifid], bold:true}, logScale: false, minValue:0, maxValue:1}, 
+                   1: {title:"Distance", titleTextStyle:{color:distance_color, bold:true}, logScale: false, minValue:0, maxValue:150 } }, 
+	  hAxis: {
+		format:'0', 
+		title:"Ranked peak", 
+		titleTextStyle: { bold:true }, 
+		gridlines: { color:'#FFFFFF' }
+	  },
+          series: {
+		0: {targetAxisIndex:0, color:line_colors[motifid]},
+		1: {targetAxisindex:0, color:flanking_color},
+		2: {targetAxisIndex:1, color:distance_color} }
+          });
+    }
+
+    function drawTable( jobid ) {
+      //var jsonData = $.ajax({
+       //   url: "{{hostparent}}/motifscore/"+jobid,
+       //   dataType:"json",
+       //   async: false
+       //   }).responseText;
+      var jsonData = TableData.responseText ;
+      //debugging!
+      //alert(xinspect(TableData));
+      //console.log( TableData.responseJSON.rows[1] )
+
+      // Create our data table out of JSON data loaded from server.
+      var data = new google.visualization.DataTable(jsonData);
+        var table = new google.visualization.Table(document.getElementById('table_div'));
+        table.draw(data, {showRowNumber: false, width:'50em'});
+      }
+
+    function toggle() {
+        button = document.getElementById( 'togglebutton' ) 
+	if (button.value=="Show all motifs" ) {
+            show_motifs() ;
+            button.value = 'Hide filtered motifs';
+        }
+        else {
+            hide_motifs() ;
+            button.value = "Show all motifs" ;
+        }
+    }
+
+     </script>
+
+    <!------ macros for jinja2 ------>
+
+    <!------ end macros for jinja2 ------>
+
+  </head>
+
+  <body onload="hide_motifs()" >
+
+    <table>
+	<tr>
+	    <td>
+		<a href='{{hostaddress}}'><img src='http://www.factorbook.org/mediawiki/factordata/factorbooklogo5.png' width=45px height=45px/></a></td>
+	    <td>
+		<h1><a name=summery>{{ servername|title }} Result</a></h1>
+	    </td>
+	</tr>
+      </table>
+
+    <hr size=3 color=#008000>
+
+    <div id=querysummary style="margin-bottom:0.5em">
+	<dl class=header>
+	    <dt class=header>Job ID:</dt><dd class=header>{{jobid}}</dd>
+            {% if userInfo.jobname != '' %} <dt class=header>TF Name:</dt><dd class=header>{{userInfo.jobname}}</dd> {% endif %}
+	    {% if userInfo.cell != '' %} <dt class=header>Data Source:</dt><dd class=header>{{userInfo.cell}}</dd> {% endif %}
+	    {% if userInfo.treatment != '' %} <dt class=header>Experimental Condition:</dt><dd class=header>{{userInfo.treatment}}</dd> {% endif %}
+	    {% if userInfo.lab != '' %} <dt class=header>Lab Name:</dt><dd class=header>{{userInfo.lab}}</dd> {% endif %}
+            <dt class=header>&nbsp</dt><dd class=header>&nbsp</dd>
+	    <dt class=header>Filename:</dt><dd class=header>{{userInfo.filename}}</dd>
+	    <dt class=header>File Format:</dt><dd class=header>{{userInfo.fileformat|capitalize}}</dd>
+	    {% if userInfo.summitcol != '' %} <dt class=header>Summit Column:</dt><dd class=header>{{userInfo.summitcol}}</dd> {% endif %}
+            <dt class=header><a href='{{hostparent}}pdf/{{jobid}}'>Download PDF report</a></dt><dd>&nbsp</dd>
+	</dl>
+    </div>
+
+    <hr size=3 color=#008000>
+
+    {% block content %}
+    <div id='table_div'></div>
+    <hr size=3 color=#008000><br>
+    <input type=button id="togglebutton" value="Show all motifs" onclick="toggle()">
+
+    {% for motifid in motifids %}
+	<div id="motifarea_{{motifid}}">
+		<!-- Motif header  -->
+		<div class=motifSummaryLeft> 
+			<h1>Motif {{motifid}}</h1> 
+			{% if motifid in passed_motifids %} <h3 style="color:blue">passed</h3> {% else %} <h3 style="color:red">failed</h3> {% endif %}
+		</div>
+		<img src='{{hostparent}}motiflogo/{{jobid}}/{{motifid}}'/>
+
+		<div id="chart_div{{motifid}}"></div>
+		{% if selection[motifid] %}
+			{% for i in [1,2,3] %}
+			{% if selection[motifid][i] %}
+				{% if i == 1 %}
+					<h3>Most similar motif in Factorbook</h3>
+				{% elif i == 2 %}
+					<h3>Most similar motif in TransFac</h3>
+				{% elif i == 3 %}
+					<h3>Most similar motif in Jasper</h3>
+				{% endif %}
+				<b>TOMTOM p-value:</b> {{selection[motifid][i].pvalue}}
+				<br>
+				<div class=motifSummaryLeft> <b>Motif {{motifid}}</b> </div>
+				<img src='{{hostparent}}motiflogo/{{jobid}}/{{selection[motifid][i].id}}_f'/><br>
+				<div class=motifSummaryLeft> 
+					<b>{{selection[motifid][i].target_name}}
+					{% if selection[motifid][i].target_altname %}
+						<br>({{selection[motifid][i].target_altname}})
+					{% endif %}
+					</b> 
+				</div>
+				<img src='{{hostparent}}motiflogo/{{jobid}}/{{selection[motifid][i].id}}_f_t'/><br>
+			{% endif %}
+			{% endfor %}
+		{% else %}
+			<h3>No motifs were found!</h3>
+		{% endif %}
+		<br>
+    		<hr size=3 color=#008000>
+	</div>
+    {% endfor %}
+  {% endblock %}
+
+  {% if reference %}
+     <p class=reference><b>References:</b></p>
+      {{reference}}
+  {% endif %}
+  <p class=reference><i>Comments and suggestions to: <a href='mailto:{{admin_email}}'>{{admin_email}}</a></i></p>
+  <br>
+  </body>
+</html>

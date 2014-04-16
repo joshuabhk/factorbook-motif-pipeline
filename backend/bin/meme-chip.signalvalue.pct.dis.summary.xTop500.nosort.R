@@ -1,0 +1,51 @@
+master<-read.table("master.table.final.test",sep="\t",head=T)
+### remove the low quality datasets with the 1st column marked as -2
+#master<-master[master[,1]>-2,]
+
+for(i in master[order(master$HGNC.ID,master$cell,master$treatment,master$lab),"spp_filename"])
+{
+	#spp<-gsub(".bam.*","",i)
+	spp<-i
+	info<-master[master$spp_filename==i,]
+	print(i)
+
+	fimo<-read.table("top500.center.meme_fimo_out/fimo.txt",sep="\t")
+	id<-gsub("peak_","",fimo[,2])
+	fimo<-fimo[as.numeric(id)>500,]
+	fimo<-data.frame(fimo[,1:2],apply(fimo,1,function(x) if(150 %in% seq(as.numeric(x[3]),as.numeric(x[4]))) { 0 } else { min(abs(as.numeric(x[4])-150),abs(as.numeric(x[3])-150)) }))
+	fimo.flanking<-read.table("top500.center.meme.flanking.fimo_out/fimo.txt",sep="\t")
+	id<-gsub("peak_(.*)-.*","\\1",fimo.flanking[,2])
+	fimo.flanking<-fimo.flanking[as.numeric(id)>500,]
+	if(nrow(fimo.flanking)>0)
+	{
+		fimo.flanking<-data.frame(fimo.flanking[,1:2],apply(fimo.flanking,1,function(x) if(150 %in% seq(as.numeric(x[3]),as.numeric(x[4]))) { 0 } else { min(abs(as.numeric(x[4])-150),abs(as.numeric(x[3])-150)) }))
+		fimo.flanking<-data.frame(fimo.flanking,t(apply(fimo.flanking,1,function(x) unlist(strsplit(as.character(x[2]),"-"))))[,2])
+		fimo.flanking[,2]<-t(apply(fimo.flanking,1,function(x) unlist(strsplit(as.character(x[2]),"-"))))[,1]
+	}
+
+	peak<-read.table(paste(spp,"_summits.window150.clip.bed",sep=""),sep="\t")
+	peak.fimo<-matrix(0,nrow=5,ncol=nrow(peak))
+	peak.fimo.l<-peak.fimo
+	peak.fimo.r<-peak.fimo
+
+	for(j in seq(1,5,1))
+	{
+		motif<-as.data.frame(tapply(fimo[fimo[,1]==j,3],fimo[fimo[,1]==j,2],min))
+		peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+		#peak.fimo[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+		peak.fimo[j,]<-peak.fimo.1[order( as.numeric( sub( "peak_", "", peak.fimo.1[,5] )) ),7]
+		
+		motif<-as.data.frame(tapply(fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="L",3],fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="L",2],min))
+		peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+		#peak.fimo.l[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+		peak.fimo.l[j,]<-peak.fimo.1[order( as.numeric( sub( "peak_", "", peak.fimo.1[,5] )) ),7]
+
+		motif<-as.data.frame(tapply(fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="R",3],fimo.flanking[fimo.flanking[,1]==j & fimo.flanking[,4]=="R",2],min))
+		peak.fimo.1<-merge(peak,motif,by.x=4,by.y=0,all.x=T)
+		#peak.fimo.r[j,]<-peak.fimo.1[order(peak.fimo.1[,5],decreasing=T),7]
+		peak.fimo.r[j,]<-peak.fimo.1[order( as.numeric( sub( "peak_", "", peak.fimo.1[,5] )) ),7]
+
+#		write.table(data.frame(spp,j,summary[gsub("wgEncode","",spp),j],nrow(peak),sum(!is.na(peak.fimo[j,])),sum(!is.na(peak.fimo.l[j,])),sum(!is.na(peak.fimo.r[j,]))),"meme-chip.signalvalue.pct.dis.summary",col.name=F,row.names=F,sep="\t",quote=F,append=T)
+		write.table(data.frame(spp,j,j,nrow(peak)-500,sum(!is.na(peak.fimo[j,])),sum(!is.na(peak.fimo.l[j,])),sum(!is.na(peak.fimo.r[j,]))),"meme-chip.signalvalue.pct.dis.xTop500.summary",col.name=F,row.names=F,sep="\t",quote=F,append=T)
+	}
+}

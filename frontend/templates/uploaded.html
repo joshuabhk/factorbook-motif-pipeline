@@ -1,0 +1,17 @@
+<html>
+        <body>
+            <strong>Your file has been successfully uploaded.</strong><br>
+            <br>
+
+            <b>Filename </b>: {{ filename }}<br>
+            <b>File size</b>: {{ size }}<br>
+            {% if jobname %}
+		<b>jobname  </b>: {{ jobname }}<br>
+            {% endif %}
+            <b>email    </b>: {{ email }}<br>
+            <b>jobid    </b>: {{ jobid }}<br>
+	    <br>
+
+	    <strong>You can check the results in <a href='view/{{jobid}}' >this URL</a>.</strong>
+        </body>
+</html>
