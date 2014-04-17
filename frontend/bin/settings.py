@@ -58,3 +58,7 @@ motif_logo_dir = 'top500.center.meme_out'
 matched_motif_logo_dir = 'top500.center.meme_tomtom_out'
 tomtom_result_fn = join( matched_motif_logo_dir, 'tomtom.xml' )
 
+#the # of lines to be used for the pipeline
+#if the value is 0 then use all lines.
+#use_top_lines = 0 
+use_top_lines = 2500

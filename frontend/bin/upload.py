@@ -3,9 +3,9 @@ from os.path import join, basename
 from jinja2 import FileSystemLoader
 from os import system
 from tempfile import mkdtemp
-
 from settings import env, root_dir, user_dir, user_data_fn, jobserver, queuefile, job_dir, cmd_template
-
+# # of top lines to be use to reduce run time.
+from settings import use_top_lines
 
 class Upload :
         exposed = True
@@ -34,14 +34,27 @@ class Upload :
                 #2. save  uploaded file into the save_dir
                 save_fn = join( save_dir, jobid )
                 save_fp = open( save_fn, 'w' )
-                size = 0
-                while True:
-                    data = myFile.file.read(8192)
-                    if not data:
-                        break
-                    size += len(data)
-                    save_fp.write( data )
-                save_fp.close()
+
+		#old read line to use all lines
+                #size = 0
+                #while True:
+                #    data = myFile.file.read(8192)
+                #    if not data:
+                #        break
+                #    size += len(data)
+                #    save_fp.write( data )
+                #save_fp.close()
+
+		#new read line to use top N lines
+		for i, l in enumerate(myFile.file) :
+			if use_top_lines and i >= use_top_lines :
+				break
+			save_fp.write(l)
+		save_fp.close()
+
+		#read the end of the uploaded file and tell the size
+		myFile.file.seek(0,2)
+		size = myFile.file.tell()
 
                 #3. save user information
                 data_fp = open( join( save_dir, user_data_fn ), "w" )
